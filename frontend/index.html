@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>PDF-Excel 文本相似度检索工具</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+</head>
+<body>
+    <div class="container">
+        <h1>📄🔍 PDF-Excel 文本相似度检索工具</h1>
+        <p>上传PDF文件和Excel文件，设置参数后进行文本相似度检索，结果将以Excel文件形式下载。</p>
+
+        <form id="upload-form">
+            <div class="form-group">
+                <label for="pdf_file">上传PDF文件（FileA）:</label>
+                <input type="file" id="pdf_file" name="pdf_file" accept=".pdf" required>
+            </div>
+
+            <div class="form-group">
+                <label for="excel_file">上传Excel文件（FileB）:</label>
+                <input type="file" id="excel_file" name="excel_file" accept=".xlsx, .xls" required>
+            </div>
+
+            <div class="form-group">
+                <label for="sheet_name">Excel工作表名称:</label>
+                <input type="text" id="sheet_name" name="sheet_name" value="Sheet1" required>
+            </div>
+
+            <div class="form-group">
+                <label for="query_column">查询列名称:</label>
+                <input type="text" id="query_column" name="query_column" value="Query" required>
+            </div>
+
+            <div class="form-group">
+                <label for="model_name">预训练模型名称:</label>
+                <input type="text" id="model_name" name="model_name" value="BAAI/bge-large-zh-v1.5" required>
+            </div>
+
+            <div class="form-group">
+                <label for="max_length">文本分段最大长度:</label>
+                <input type="number" id="max_length" name="max_length" value="500" min="100" max="2000" required>
+            </div>
+
+            <div class="form-group">
+                <label for="top_k">每个查询检索的相关段落数量 (top_k):</label>
+                <input type="number" id="top_k" name="top_k" value="3" min="1" max="10" required>
+            </div>
+
+            <div class="form-group">
+                <label for="threshold">相似度阈值:</label>
+                <input type="number" id="threshold" name="threshold" value="0.5" min="0" max="1" step="0.05" required>
+            </div>
+
+            <div class="form-group">
+                <label for="use_existing_index">使用已存在的 FAISS 索引:</label>
+                <input type="checkbox" id="use_existing_index" name="use_existing_index">
+            </div>
+
+            <button type="submit">开始处理</button>
+        </form>
+
+        <div id="status"></div>
+        <div id="result" style="display: none;">
+            <h2>📊 处理结果</h2>
+            <a id="download-link" href="#" download="FileB_with_Relevance.xlsx">下载结果 Excel 文件</a>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

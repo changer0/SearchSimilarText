@@ -214,7 +214,7 @@ def main():
     检索相关性并输出结果的完整流程。
     """
     # 设置命令行参数解析
-    parser = argparse.ArgumentParser(description="PDF-Excel 文本相似度检索脚本")
+    parser = argparse.ArgumentParser(description="PDF-Excel 文本相似度检索工具")
     parser.add_argument('--source_pdf_path', type=str, required=True, help="输入的来源 PDF 文件路径")
     parser.add_argument('--query_excel_path', type=str, required=True, help="输入的 Excel 文件路径（包含查询条目）")
     parser.add_argument('--output_path', type=str, required=True, help="输出的 Excel 文件路径")
