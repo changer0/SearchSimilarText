@@ -43,8 +43,15 @@ def split_text(text, max_length=500):
     return segments
 
 # 函数：将嵌入向量归一化为单位向量
+# embeddings：一个二维 NumPy 数组，形状为 (num_vectors, dim)，其中 num_vectors 是向量的数量，dim 是每个向量的维度。
 def normalize_embeddings(embeddings):
+    """
+    函数的主要目的是将嵌入向量（embeddings）归一化为单位向量。归一化后的向量长度（或范数）为1。这在许多应用场景中非常重要，特别是在计算向量相似度（如余弦相似度）时。
+    """
+    # 计算每个向量的范数（即长度）。
+    # keepdims=True：保持输出数组的维度。结果 norms 的形状为 (num_vectors, 1)，而不是 (num_vectors,)。这样在后续的除法操作中，维度会自动广播，避免形状不匹配的问题。
     norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+    # 
     norms[norms == 0] = 1  # 防止除以零
     normalized_embeddings = embeddings / norms
     return normalized_embeddings
@@ -140,7 +147,7 @@ def check_relevance_and_output_cosine(queries, model, index, segments, df_b, top
     for query in queries:
         # 检索当前查询最相关的段落
         results = retrieve_cosine_similarity(query, model, index, segments, top_k=top_k)
-        logging.info(f"retrieve_cosine_similarity results: {results}")
+        # cogging.info(f"retrieve_cosine_similarity results: {results}")
         # 判断是否有任何一个检索结果的相似度超过阈值，从 results 中查询 similarity 大于设定阈值的场景
         has_relevance = any(res['similarity'] >= threshold for res in results)
         relevance.append(has_relevance)
@@ -169,16 +176,16 @@ def check_relevance_and_output_cosine(queries, model, index, segments, df_b, top
     df_b['Similarities'] = related_similarities
     return df_b
 
-# 函数：保存 FAISS 索引到文件
-def save_faiss_index(index, file_path):
-    faiss.write_index(index, file_path)
-    logging.info(f"FAISS 索引已保存到 {file_path}")
+# # 函数：保存 FAISS 索引到文件
+# def save_faiss_index(index, file_path):
+#     faiss.write_index(index, file_path)
+#     logging.info(f"FAISS 索引已保存到 {file_path}")
 
-# 函数：从文件加载 FAISS 索引
-def load_faiss_index(file_path):
-    index = faiss.read_index(file_path)
-    logging.info(f"FAISS 索引已从 {file_path} 加载")
-    return index
+# # 函数：从文件加载 FAISS 索引
+# def load_faiss_index(file_path):
+#     index = faiss.read_index(file_path)
+#     logging.info(f"FAISS 索引已从 {file_path} 加载")
+#     return index
 
 # 主函数：整合所有步骤，实现完整的流程
 def main():
@@ -193,40 +200,26 @@ def main():
         output_path = "FileB_with_Relevance.xlsx"    # 输出结果的 Excel 文件路径
         faiss_index_path = "faiss_index.index"       # FAISS 索引文件路径
 
-        # 检查是否已存在 FAISS 索引
-        try:
-            logging.info("尝试加载已保存的 FAISS 索引...")
-            faiss_index = load_faiss_index(faiss_index_path)
-            # 如果加载成功，需要同时加载嵌入模型和段落内容
-            # 这里为了简化示例，重新生成嵌入和段落内容
-            # 实际应用中，可以将段落内容和嵌入一起保存并加载
-            raise FileNotFoundError  # 强制重新生成索引以简化示例
-        except FileNotFoundError:
-            logging.info("未找到已保存的 FAISS 索引，开始生成索引...")
-            # 步骤 1: 提取 FileA 的文本内容
-            logging.info("提取 FileA 的文本内容...")
-            file_a_text = extract_text_from_pdf(file_a_path)
-            
-            # 步骤 2: 分段 FileA 的文本内容
-            logging.info("分段 FileA 的文本内容...")
-            file_a_segments = split_text(file_a_text, max_length=500)  # 可根据需要调整 max_length
-            
-            # 步骤 3: 生成 FileA 的嵌入向量，并归一化
-            logging.info("生成 FileA 的嵌入向量...")
-            file_a_embeddings, embedding_model = generate_embeddings(
-                file_a_segments,
-                model_name='BAAI/bge-large-zh-v1.5'  # 推荐支持多语言的模型
-            )
-            
-            # 步骤 4: 构建 FAISS 内积索引
-            logging.info("构建 FAISS 内积索引...")
-            faiss_index = build_faiss_index_cosine(file_a_embeddings)
-            
-            # 步骤 5: 保存 FAISS 索引
-            logging.info("保存 FAISS 索引...")
-            save_faiss_index(faiss_index, faiss_index_path)
+        # 步骤 1: 提取 FileA 的文本内容
+        logging.info("提取 FileA 的文本内容...")
+        file_a_text = extract_text_from_pdf(file_a_path)
+        
+        # 步骤 2: 分段 FileA 的文本内容
+        logging.info("分段 FileA 的文本内容...")
+        file_a_segments = split_text(file_a_text, max_length=500)  # 可根据需要调整 max_length
+        
+        # 步骤 3: 生成 FileA 的嵌入向量，并归一化
+        logging.info("生成 FileA 的嵌入向量...")
+        file_a_embeddings, embedding_model = generate_embeddings(
+            file_a_segments,
+            model_name='BAAI/bge-large-zh-v1.5'  # 推荐支持多语言的模型
+        )
+        
+        # 步骤 4: 构建 FAISS 内积索引
+        logging.info("构建 FAISS 内积索引...")
+        faiss_index = build_faiss_index_cosine(file_a_embeddings)
 
-        # 步骤 6: 读取 FileB 的查询条目
+        # 步骤 5: 读取 FileB 的查询条目
         logging.info("读取 FileB 的查询条目...")
         queries, df_b = read_excel_queries(
             file_b_path,
@@ -234,7 +227,7 @@ def main():
             query_column='Query'    # 根据实际情况调整查询列名
         )
 
-        # 步骤 7: 检查相关性并生成输出，包括相关段落和相似度
+        # 步骤 6 检查相关性并生成输出，包括相关段落和相似度
         logging.info("检查相关性并生成输出...")
         df_output = check_relevance_and_output_cosine(
             queries,
@@ -246,18 +239,18 @@ def main():
             threshold=0.5    # 相似度阈值，可根据实际情况调整
         )
 
-        # 步骤 8: 清洗 DataFrame 中的非法字符
+        # 步骤 87: 清洗 DataFrame 中的非法字符
         logging.info("清洗 DataFrame 中的非法字符...")
         columns_to_clean = ['Related_Segments', 'Similarities']
         for col in columns_to_clean:
             df_output[col] = df_output[col].apply(remove_illegal_characters)
 
-        # 步骤 9: 将列表转换为 JSON 字符串以便在 Excel 中显示
+        # 步骤 8: 将列表转换为 JSON 字符串以便在 Excel 中显示
         logging.info("将相关段落和相似度转换为 JSON 字符串...")
         df_output['Related_Segments'] = df_output['Related_Segments'].apply(lambda x: json.dumps(x, ensure_ascii=False))
         df_output['Similarities'] = df_output['Similarities'].apply(lambda x: json.dumps(x, ensure_ascii=False))
 
-        # 步骤 10: 保存结果到新的 Excel 文件
+        # 步骤 9: 保存结果到新的 Excel 文件
         logging.info(f"保存结果到 {output_path}...")
         df_output.to_excel(output_path, index=False)
         logging.info("完成！")
