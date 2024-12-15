@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 import uuid
 import logging
 from datetime import datetime
+from typing import Optional  # 导入 Optional
 
 from similarity_searcher import SimilaritySearcher
 
@@ -40,8 +41,8 @@ app.mount("/downloads", StaticFiles(directory=DOWNLOAD_DIR), name="downloads")
 @app.post("/process/")
 async def process_files(
     source_pdf: UploadFile = File(..., description="上传的 PDF 文件"),
-    query_excel: UploadFile = File(None, description="上传的 Excel 文件，包含查询条目（可选）"),
-    query_text: str = Form(None, description="直接上传的查询文本，每行一个查询（可选）"),
+    query_excel: Optional[UploadFile | str] = File(None, description="上传的 Excel 文件，包含查询条目（可选）"),
+    query_text: Optional[str] = Form("", description="直接上传的查询文本，每行一个查询（可选）"),
     query_sheet_name: str = Form("Sheet1", description="Excel 中查询条目所在的工作表名称"),
     query_column: str = Form("Query", description="Excel 中查询条目所在的列名"),
     split_max_length: int = Form(500, description="文本分段的最大长度"),
