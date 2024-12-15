@@ -38,17 +38,23 @@ os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 # 配置静态文件服务，用于提供下载文件
 app.mount("/downloads", StaticFiles(directory=DOWNLOAD_DIR), name="downloads")
 
+# 配置静态文件服务，用于提供前端页面
+frontend_dir = os.path.join(os.getcwd(), "frontend")
+logging.info(f"frontend_dir: {frontend_dir}")
+app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+
+
 @app.post("/process/")
 async def process_files(
-    source_pdf: UploadFile = File(..., description="上传的 PDF 文件"),
-    query_excel: Optional[UploadFile | str] = File(None, description="上传的 Excel 文件，包含查询条目（可选）"),
-    query_text: Optional[str] = Form("", description="直接上传的查询文本，每行一个查询（可选）"),
-    query_sheet_name: str = Form("Sheet1", description="Excel 中查询条目所在的工作表名称"),
-    query_column: str = Form("Query", description="Excel 中查询条目所在的列名"),
-    split_max_length: int = Form(500, description="文本分段的最大长度"),
-    embedding_model: str = Form("BAAI/bge-large-zh-v1.5", description="用于生成嵌入的预训练模型名称"),
-    top_k: int = Form(3, description="每个查询检索的相关段落数量"),
-    threshold: float = Form(0.5, description="判断是否相关的相似度阈值"),
+        source_pdf: UploadFile = File(..., description="上传的 PDF 文件"),
+        query_excel: Optional[UploadFile | str] = File(None, description="上传的 Excel 文件，包含查询条目（可选）"),
+        query_text: Optional[str] = Form("", description="直接上传的查询文本，每行一个查询（可选）"),
+        query_sheet_name: str = Form("Sheet1", description="Excel 中查询条目所在的工作表名称"),
+        query_column: str = Form("Query", description="Excel 中查询条目所在的列名"),
+        split_max_length: int = Form(500, description="文本分段的最大长度"),
+        embedding_model: str = Form("BAAI/bge-large-zh-v1.5", description="用于生成嵌入的预训练模型名称"),
+        top_k: int = Form(3, description="每个查询检索的相关段落数量"),
+        threshold: float = Form(0.5, description="判断是否相关的相似度阈值"),
 ):
     unique_id = str(uuid.uuid4())
     session_dir = os.path.join(TEMP_DIR, unique_id)
@@ -60,7 +66,8 @@ async def process_files(
             raise HTTPException(status_code=400, detail="必须上传查询的 Excel 文件或提供查询文本，且二者不能同时提供。")
 
         queries = []
-        output_excel_path = os.path.join(DOWNLOAD_DIR, f"FileB_with_Relevance_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx")
+        output_excel_path = os.path.join(DOWNLOAD_DIR,
+                                         f"Output_Relevance_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx")
 
         if query_excel:
             # 保存上传的 Excel 文件

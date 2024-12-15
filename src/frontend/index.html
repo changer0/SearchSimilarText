@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF-Excel/Text 相似度检索</title>
+    <!-- 引入 Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* 自定义样式 */
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 800px;
+            margin-top: 50px;
+            padding: 30px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .required::after {
+            content: "*";
+            color: red;
+            margin-left: 5px;
+        }
+        .loading-spinner {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 class="mb-4 text-center">PDF-Excel/Text 相似度检索</h2>
+    <form id="uploadForm">
+        <!-- 上传 PDF 文件 -->
+        <div class="mb-3">
+            <label for="source_pdf" class="form-label required">上传 PDF 文件</label>
+            <input class="form-control" type="file" id="source_pdf" name="source_pdf" accept="application/pdf" required>
+        </div>
+
+        <!-- 上传 Excel 文件 或 输入查询文本 -->
+        <div class="mb-3">
+            <label class="form-label required">选择查询方式</label>
+            <div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="queryType" id="uploadExcel" value="excel" checked>
+                    <label class="form-check-label" for="uploadExcel">上传 Excel 文件</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="queryType" id="inputText" value="text">
+                    <label class="form-check-label" for="inputText">输入查询文本</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- 上传 Excel 文件 -->
+        <div class="mb-3" id="excelUploadSection">
+            <label for="query_excel" class="form-label">上传 Excel 文件</label>
+            <input class="form-control" type="file" id="query_excel" name="query_excel" accept=".xlsx,.xls">
+        </div>
+
+        <!-- 输入查询文本 -->
+        <div class="mb-3" id="textInputSection" style="display: none;">
+            <label for="query_text" class="form-label">输入查询文本（每行一个查询）</label>
+            <textarea class="form-control" id="query_text" name="query_text" rows="5" placeholder="请输入查询文本，每行一个查询"></textarea>
+        </div>
+
+        <!-- 其他参数设置 -->
+        <div class="mb-3">
+            <label for="query_sheet_name" class="form-label">查询工作表名称</label>
+            <input type="text" class="form-control" id="query_sheet_name" name="query_sheet_name" value="Sheet1">
+        </div>
+
+        <div class="mb-3">
+            <label for="query_column" class="form-label">查询列名</label>
+            <input type="text" class="form-control" id="query_column" name="query_column" value="Query">
+        </div>
+
+        <div class="mb-3">
+            <label for="split_max_length" class="form-label">文本分段的最大长度</label>
+            <input type="number" class="form-control" id="split_max_length" name="split_max_length" value="500" min="100" max="10000">
+        </div>
+
+        <div class="mb-3">
+            <label for="model_name" class="form-label">预训练模型名称</label>
+            <input type="text" class="form-control" id="model_name" name="model_name" value="BAAI/bge-large-zh-v1.5">
+        </div>
+
+        <div class="mb-3">
+            <label for="top_k" class="form-label">每个查询检索的相关段落数量</label>
+            <input type="number" class="form-control" id="top_k" name="top_k" value="3" min="1" max="10">
+        </div>
+
+        <div class="mb-3">
+            <label for="threshold" class="form-label">相似度阈值</label>
+            <input type="number" step="0.01" class="form-control" id="threshold" name="threshold" value="0.5" min="0" max="1">
+        </div>
+
+        <!-- 提交按钮和加载动画 -->
+        <button type="submit" class="btn btn-primary" id="submitBtn">
+            提交
+            <span class="spinner-border spinner-border-sm loading-spinner" role="status" aria-hidden="true"></span>
+        </button>
+    </form>
+
+    <!-- 结果展示 -->
+    <div class="mt-4" id="resultSection" style="display: none;">
+        <h4>处理结果</h4>
+        <p>下载生成的文件：<a href="#" id="downloadLink" target="_blank">点击这里下载</a></p>
+        <h5>JSON 结果：</h5>
+        <pre id="jsonResult" style="background-color: #f1f1f1; padding: 15px; border-radius: 5px;"></pre>
+    </div>
+</div>
+
+<!-- 引入 Bootstrap JS 和依赖 -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const uploadExcelRadio = document.getElementById('uploadExcel');
+        const inputTextRadio = document.getElementById('inputText');
+        const excelUploadSection = document.getElementById('excelUploadSection');
+        const textInputSection = document.getElementById('textInputSection');
+        const uploadForm = document.getElementById('uploadForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const loadingSpinner = document.querySelector('.loading-spinner');
+        const resultSection = document.getElementById('resultSection');
+        const downloadLink = document.getElementById('downloadLink');
+        const jsonResult = document.getElementById('jsonResult');
+
+        // 切换查询方式
+        uploadExcelRadio.addEventListener('change', toggleQueryType);
+        inputTextRadio.addEventListener('change', toggleQueryType);
+
+        function toggleQueryType() {
+            if (uploadExcelRadio.checked) {
+                excelUploadSection.style.display = 'block';
+                textInputSection.style.display = 'none';
+            } else {
+                excelUploadSection.style.display = 'none';
+                textInputSection.style.display = 'block';
+            }
+        }
+
+        // 表单提交处理
+        uploadForm.addEventListener('submit', function (e) {
+            e.preventDefault(); // 防止默认表单提交
+
+            // 隐藏之前的结果
+            resultSection.style.display = 'none';
+            jsonResult.textContent = '';
+            downloadLink.href = '#';
+
+            // 创建 FormData 对象
+            const formData = new FormData();
+
+            // 获取并验证 PDF 文件
+            const sourcePdf = document.getElementById('source_pdf').files[0];
+            if (!sourcePdf) {
+                alert('请上传 PDF 文件。');
+                return;
+            }
+            formData.append('source_pdf', sourcePdf);
+
+            // 获取查询方式
+            if (uploadExcelRadio.checked) {
+                const queryExcel = document.getElementById('query_excel').files[0];
+                if (!queryExcel) {
+                    alert('请选择要上传的 Excel 文件或输入查询文本。');
+                    return;
+                }
+                formData.append('query_excel', queryExcel);
+            } else {
+                const queryText = document.getElementById('query_text').value.trim();
+                if (!queryText) {
+                    alert('请输入查询文本。');
+                    return;
+                }
+                formData.append('query_text', queryText);
+            }
+
+            // 获取其他参数
+            const querySheetName = document.getElementById('query_sheet_name').value.trim();
+            const queryColumn = document.getElementById('query_column').value.trim();
+            const splitMaxLength = document.getElementById('split_max_length').value;
+            const modelName = document.getElementById('model_name').value.trim();
+            const topK = document.getElementById('top_k').value;
+            const threshold = document.getElementById('threshold').value;
+
+            formData.append('query_sheet_name', querySheetName);
+            formData.append('query_column', queryColumn);
+            formData.append('split_max_length', splitMaxLength);
+            formData.append('model_name', modelName);
+            formData.append('top_k', topK);
+            formData.append('threshold', threshold);
+
+            // 禁用按钮并显示加载动画
+            submitBtn.disabled = true;
+            loadingSpinner.style.display = 'inline-block';
+
+            // 发送 POST 请求
+            fetch('/process/', { // 请根据实际后端地址调整
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // 启用按钮并隐藏加载动画
+                submitBtn.disabled = false;
+                loadingSpinner.style.display = 'none';
+
+                if (data.code === 200) {
+                    // 显示下载链接和 JSON 结果
+                    resultSection.style.display = 'block';
+                    downloadLink.href = data.data.download_url;
+                    jsonResult.textContent = JSON.stringify(data.data.result_json, null, 2);
+                } else {
+                    alert(`错误：${data.msg}`);
+                }
+            })
+            .catch(error => {
+                console.error('错误:', error);
+                alert('处理过程中发生错误，请稍后再试。');
+
+                // 启用按钮并隐藏加载动画
+                submitBtn.disabled = false;
+                loadingSpinner.style.display = 'none';
+            });
+        });
+    });
+</script>
+
+</body>
+</html>
