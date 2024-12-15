@@ -1,22 +1,27 @@
-## 查找相似文本
+## 文档相似度检索器
 
 使用模型：
-
 BAAI/bge-large-zh-v1.5
 
-BAAI/bge-large-zh-v1.5
+## 依赖安装
+
+```
+pip3 install -r requirements.txt
+```
 
 ## 脚本启动
+
+根目录使用：
 
 ```agsl
 sh launcher.sh
 ```
 
-## 运行后端服务
+## 直接后端服务
+
 
 ```
-cd backend
-pip3 install -r requirements.txt
+cd src
 uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
@@ -29,6 +34,7 @@ http://localhost:8000/docs
 http://localhost:8000/frontend/index.html
 
 ## 问题排查
+## 端口占用情况
 报错：
 ```agsl
 /usr/local/bin/python3.10 /Users/lemon/PythonProject/SearchSimilarText/src/main.py 
