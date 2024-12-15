@@ -1,15 +1,16 @@
 # backend/similarity_searcher.py
 
 # 导入所需的库
-import pdfplumber          # 用于从 PDF 中提取文本
-import pandas as pd        # 用于处理 Excel 文件
-import re                  # 用于正则表达式操作
+import pdfplumber  # 用于从 PDF 中提取文本
+import pandas as pd  # 用于处理 Excel 文件
+import re  # 用于正则表达式操作
 from sentence_transformers import SentenceTransformer  # 用于生成句子嵌入
-import faiss               # 用于高效的向量检索
-import numpy as np         # 用于数值计算
-import logging             # 用于日志记录
+import faiss  # 用于高效的向量检索
+import numpy as np  # 用于数值计算
+import logging  # 用于日志记录
 from openpyxl import Workbook
 from openpyxl.styles import Border, Side, Alignment
+
 
 class SimilaritySearcher:
     def __init__(self, source_pdf_path, query_excel_path=None, queries=None, output_path=None,
@@ -227,7 +228,7 @@ class SimilaritySearcher:
             results = self.retrieve_cosine_similarity(query)
             # 判断是否有任何一个检索结果的相似度超过阈值
             has_relevance = any(res['similarity'] >= self.threshold for res in results)
-            
+
             # 收集相关段落
             relevant_paragraphs = [
                 {
@@ -272,8 +273,10 @@ class SimilaritySearcher:
                 query = record['query']
                 relevance = "Yes" if record['relevance'] else "No"
                 if record['relevance']:
-                    paragraphs = "\n\n".join([f"Paragraph {i+1}: {p['paragraph']}" for i, p in enumerate(record['relevant_paragraphs'])])
-                    similarities = "\n\n".join([f"Similarity {i+1}: {p['similarity']}" for i, p in enumerate(record['relevant_paragraphs'])])
+                    paragraphs = "\n\n".join(
+                        [f"Paragraph {i + 1}: {p['paragraph']}" for i, p in enumerate(record['relevant_paragraphs'])])
+                    similarities = "\n\n".join(
+                        [f"Paragraph {i + 1} Similarity: {p['similarity']}" for i, p in enumerate(record['relevant_paragraphs'])])
                 else:
                     paragraphs = ""
                     similarities = ""
@@ -289,8 +292,8 @@ class SimilaritySearcher:
             column_widths = {
                 'A': 30,  # Query
                 'B': 10,  # Relevance
-                'C': 100, # Relevant Paragraphs
-                'D': 20   # Similarities
+                'C': 100,  # Relevant Paragraphs
+                'D': 20  # Similarities
             }
             for col, width in column_widths.items():
                 ws.column_dimensions[col].width = width

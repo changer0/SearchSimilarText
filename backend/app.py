@@ -46,7 +46,7 @@ async def process_files(
     query_sheet_name: str = Form("Sheet1", description="Excel 中查询条目所在的工作表名称"),
     query_column: str = Form("Query", description="Excel 中查询条目所在的列名"),
     split_max_length: int = Form(500, description="文本分段的最大长度"),
-    model_name: str = Form("BAAI/bge-large-zh-v1.5", description="用于生成嵌入的预训练模型名称"),
+    embedding_model: str = Form("BAAI/bge-large-zh-v1.5", description="用于生成嵌入的预训练模型名称"),
     top_k: int = Form(3, description="每个查询检索的相关段落数量"),
     threshold: float = Form(0.5, description="判断是否相关的相似度阈值"),
 ):
@@ -92,7 +92,7 @@ async def process_files(
             query_sheet_name=query_sheet_name,
             query_column=query_column,
             split_max_length=split_max_length,
-            model_name=model_name,
+            model_name=embedding_model,
             top_k=top_k,
             threshold=threshold
         )
