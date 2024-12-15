@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF-Excel/Text 相似度检索</title>
+    <title>文档相似度检索器</title>
     <!-- 引入 Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -26,6 +26,16 @@
         }
         .loading-spinner {
             display: none;
+        }
+        /* 表格样式优化 */
+        .result-table th, .result-table td {
+            vertical-align: middle;
+        }
+        .similarity-badge {
+            font-size: 0.9em;
+        }
+        .paragraph-content {
+            white-space: pre-wrap;
         }
     </style>
 </head>
@@ -109,8 +119,22 @@
     <div class="mt-4" id="resultSection" style="display: none;">
         <h4>处理结果</h4>
         <p>下载生成的文件：<a href="#" id="downloadLink" target="_blank">点击这里下载</a></p>
-        <h5>JSON 结果：</h5>
-        <pre id="jsonResult" style="background-color: #f1f1f1; padding: 15px; border-radius: 5px;"></pre>
+        <h5>预览结果：</h5>
+        <div class="table-responsive">
+            <table class="table table-bordered result-table">
+                <thead class="table-light">
+                <tr>
+                    <th>序号</th>
+                    <th>查询内容</th>
+                    <th>是否相关</th>
+                    <th>相关段落</th>
+                </tr>
+                </thead>
+                <tbody id="resultTableBody">
+                <!-- 动态生成表格内容 -->
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -128,7 +152,7 @@
         const loadingSpinner = document.querySelector('.loading-spinner');
         const resultSection = document.getElementById('resultSection');
         const downloadLink = document.getElementById('downloadLink');
-        const jsonResult = document.getElementById('jsonResult');
+        const resultTableBody = document.getElementById('resultTableBody');
 
         // 切换查询方式
         uploadExcelRadio.addEventListener('change', toggleQueryType);
@@ -150,7 +174,7 @@
 
             // 隐藏之前的结果
             resultSection.style.display = 'none';
-            jsonResult.textContent = '';
+            resultTableBody.innerHTML = '';
             downloadLink.href = '#';
 
             // 创建 FormData 对象
@@ -213,9 +237,9 @@
 
                 if (data.code === 200) {
                     // 显示下载链接和 JSON 结果
-                    resultSection.style.display = 'block';
                     downloadLink.href = data.data.download_url;
-                    jsonResult.textContent = JSON.stringify(data.data.result_json, null, 2);
+                    displayResults(data.data.result_json);
+                    resultSection.style.display = 'block';
                 } else {
                     alert(`错误：${data.msg}`);
                 }
@@ -229,6 +253,72 @@
                 loadingSpinner.style.display = 'none';
             });
         });
+
+        // 函数：显示结果
+        function displayResults(jsonData) {
+            if (!Array.isArray(jsonData)) {
+                alert('返回的数据格式有误。');
+                return;
+            }
+
+            jsonData.forEach((item, index) => {
+                const row = document.createElement('tr');
+
+                // 序号
+                const idxCell = document.createElement('th');
+                idxCell.scope = 'row';
+                idxCell.textContent = index + 1;
+                row.appendChild(idxCell);
+
+                // 查询内容
+                const queryCell = document.createElement('td');
+                queryCell.textContent = item.query;
+                row.appendChild(queryCell);
+
+                // 是否相关
+                const relevanceCell = document.createElement('td');
+                const relevanceBadge = document.createElement('span');
+                if (item.relevance) {
+                    relevanceBadge.className = 'badge bg-success similarity-badge';
+                    relevanceBadge.textContent = '相关';
+                } else {
+                    relevanceBadge.className = 'badge bg-secondary similarity-badge';
+                    relevanceBadge.textContent = '不相关';
+                }
+                relevanceCell.appendChild(relevanceBadge);
+                row.appendChild(relevanceCell);
+
+                // 相关段落
+                const paragraphsCell = document.createElement('td');
+                if (item.relevance && item.relevant_paragraphs.length > 0) {
+                    const paragraphsList = document.createElement('ul');
+                    paragraphsList.className = 'list-group list-group-flush';
+                    item.relevant_paragraphs.forEach(paragraphItem => {
+                        const paragraph = document.createElement('li');
+                        paragraph.className = 'list-group-item paragraph-content';
+
+                        // 段落内容
+                        const paragraphText = document.createElement('p');
+                        paragraphText.textContent = paragraphItem.paragraph;
+                        paragraph.appendChild(paragraphText);
+
+                        // 相似度
+                        const similarityBadge = document.createElement('span');
+                        similarityBadge.className = 'badge bg-info similarity-badge';
+                        similarityBadge.textContent = `相似度: ${paragraphItem.similarity}`;
+                        paragraph.appendChild(similarityBadge);
+
+                        paragraphsList.appendChild(paragraph);
+                    });
+                    paragraphsCell.appendChild(paragraphsList);
+                } else {
+                    paragraphsCell.textContent = '-';
+                }
+                row.appendChild(paragraphsCell);
+
+                resultTableBody.appendChild(row);
+            });
+        }
     });
 </script>
 

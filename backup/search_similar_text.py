@@ -1,16 +1,16 @@
 # 导入所需的库
-import pdfplumber          # 用于从 PDF 中提取文本
-import pandas as pd        # 用于处理 Excel 文件
-import re                  # 用于正则表达式操作
+import pdfplumber  # 用于从 PDF 中提取文本
+import pandas as pd  # 用于处理 Excel 文件
+import re  # 用于正则表达式操作
 from sentence_transformers import SentenceTransformer  # 用于生成句子嵌入
-import faiss               # 用于高效的向量检索
-import numpy as np         # 用于数值计算
-import json                # 用于处理 JSON 数据
-import logging             # 用于日志记录
-import argparse            # 用于解析命令行参数
+import faiss  # 用于高效的向量检索
+import numpy as np  # 用于数值计算
+import logging  # 用于日志记录
+import argparse  # 用于解析命令行参数
 
 # 配置日志记录
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 # 函数：从 PDF 文件中提取文本内容
 def extract_text_from_pdf(source_pdf_path):
@@ -27,6 +27,7 @@ def extract_text_from_pdf(source_pdf_path):
         raise e
     return text
 
+
 # 函数：读取 Excel 文件中的查询条目
 def read_excel_queries(query_excel_path, query_sheet_name=0, query_column='Query'):
     try:
@@ -37,6 +38,7 @@ def read_excel_queries(query_excel_path, query_sheet_name=0, query_column='Query
         logging.error(f"读取 Excel 文件时出错: {e}")
         raise e
     return queries, df
+
 
 # 函数：将文本按指定的最大长度分段
 def split_text(text, spilt_max_length=500):
@@ -53,6 +55,7 @@ def split_text(text, spilt_max_length=500):
         segments.append(current_segment)
     logging.info(f"成功将文本分段为 {len(segments)} 个段落。")
     return segments
+
 
 # 函数：将嵌入向量归一化为单位向量
 # embeddings：一个二维 NumPy 数组，形状为 (num_vectors, dim)，其中 num_vectors 是向量的数量，dim 是每个向量的维度。
@@ -71,6 +74,7 @@ def normalize_embeddings(embeddings):
     logging.info("normalize_embeddings 成功归一化嵌入向量。")
     return normalized_embeddings
 
+
 # 函数：生成文本段落的嵌入向量
 def generate_embeddings(segments, model_name='BAAI/bge-large-zh-v1.5'):
     """
@@ -87,6 +91,7 @@ def generate_embeddings(segments, model_name='BAAI/bge-large-zh-v1.5'):
     # 目的是确保所有嵌入向量都是单位向量，以方便后续的相似度计算。
     embeddings = normalize_embeddings(embeddings)
     return embeddings, model
+
 
 # 函数：构建 FAISS 内积索引，用于余弦相似度检索
 # embeddings: 一个二维 NumPy 数组，形状为 (num_vectors, dim)，其中 num_vectors 是向量的数量，dim 是每个向量的维度。
@@ -110,6 +115,7 @@ def build_faiss_index_cosine(embeddings):
         raise e
     return index
 
+
 # 函数：检索与查询最相关的文本段落，基于余弦相似度
 def retrieve_cosine_similarity(query, model, index, segments, top_k=1):
     try:
@@ -119,13 +125,13 @@ def retrieve_cosine_similarity(query, model, index, segments, top_k=1):
     except Exception as e:
         logging.error(f"生成查询嵌入向量时出错: {e}")
         raise e
-    
+
     try:
         similarities, indices = index.search(query_embedding, top_k)
     except Exception as e:
         logging.error(f"使用 FAISS 进行检索时出错: {e}")
         raise e
-    
+
     results = []
     for similarity, idx in zip(similarities[0], indices[0]):
         if idx < len(segments):
@@ -134,6 +140,7 @@ def retrieve_cosine_similarity(query, model, index, segments, top_k=1):
                 'similarity': similarity  # 余弦相似度
             })
     return results
+
 
 # 函数：移除 Excel 不允许的非法字符
 def remove_illegal_characters(text):
@@ -153,6 +160,7 @@ def remove_illegal_characters(text):
     clean_text = illegal_chars.sub('', text)
     return clean_text
 
+
 # 函数：检查每个查询条目在 PDF 中的相关性，并生成输出
 def check_relevance_and_output_cosine(queries, model, index, segments, df_b, top_k=1, threshold=0.5):
     """
@@ -170,8 +178,8 @@ def check_relevance_and_output_cosine(queries, model, index, segments, df_b, top
     返回:
     - df_b (DataFrame): 更新后的 DataFrame，新增 'Has_Relevance_in_FileA', 'Related_Segments' 和 'Similarities' 列。
     """
-    relevance = []          # 存储每个查询的相关性结果（True/False）
-    related_segments = []   # 存储每个查询的相关段落内容
+    relevance = []  # 存储每个查询的相关性结果（True/False）
+    related_segments = []  # 存储每个查询的相关段落内容
     related_similarities = []  # 存储每个查询的相关段落相似度
 
     for query in queries:
@@ -181,7 +189,7 @@ def check_relevance_and_output_cosine(queries, model, index, segments, df_b, top
         # 判断是否有任何一个检索结果的相似度超过阈值，从 results 中查询 similarity 大于设定阈值的场景
         has_relevance = any(res['similarity'] >= threshold for res in results)
         relevance.append(has_relevance)
-        
+
         # 如果有相关性，收集相关段落和相似度
         if has_relevance:
             # 筛选出相似度超过阈值的段落
@@ -195,8 +203,8 @@ def check_relevance_and_output_cosine(queries, model, index, segments, df_b, top
         else:
             formatted_segments = ""
             formatted_similarities = ""
-        
-        related_segments.append(formatted_segments.strip())       # 去除末尾多余的换行
+
+        related_segments.append(formatted_segments.strip())  # 去除末尾多余的换行
         related_similarities.append(formatted_similarities.strip())
 
     # 将相关性结果添加到 DataFrame 中
@@ -206,6 +214,7 @@ def check_relevance_and_output_cosine(queries, model, index, segments, df_b, top
     df_b['Similarities'] = related_similarities
     logging.info("完成所有查询的相关性检索。")
     return df_b
+
 
 # 主函数：整合所有步骤，实现完整的流程
 def main():
@@ -218,48 +227,53 @@ def main():
     parser.add_argument('--source_pdf_path', type=str, required=True, help="输入的来源 PDF 文件路径")
     parser.add_argument('--query_excel_path', type=str, required=True, help="输入的 Excel 文件路径（包含查询条目）")
     parser.add_argument('--output_path', type=str, required=True, help="输出的 Excel 文件路径")
-    # parser.add_argument('--faiss_index_path', type=str, required=False, default="faiss_index.index", help="FAISS 索引文件的保存路径")
-    parser.add_argument('--query_sheet_name', type=str, required=False, default="Sheet1", help="Excel 文件中查询条目所在的工作表名称")
-    parser.add_argument('--query_column', type=str, required=False, default="Query", help="Excel 文件中查询条目所在的列名")
+    # parser.add_argument('--faiss_index_path', type=str, required=False, default="faiss_index.index", help="FAISS
+    # 索引文件的保存路径")
+    parser.add_argument('--query_sheet_name', type=str, required=False, default="Sheet1",
+                        help="Excel 文件中查询条目所在的工作表名称")
+    parser.add_argument('--query_column', type=str, required=False, default="Query",
+                        help="Excel 文件中查询条目所在的列名")
     parser.add_argument('--spilt_max_length', type=int, required=False, default=500, help="文本分段的最大长度")
-    parser.add_argument('--model_name', type=str, required=False, default='BAAI/bge-large-zh-v1.5', help="用于生成嵌入的预训练模型名称")
+    parser.add_argument('--model_name', type=str, required=False, default='BAAI/bge-large-zh-v1.5',
+                        help="用于生成嵌入的预训练模型名称")
     parser.add_argument('--top_k', type=int, required=False, default=3, help="每个查询检索的相关段落数量")
     parser.add_argument('--threshold', type=float, required=False, default=0.5, help="判断是否相关的相似度阈值")
-    
+
     args = parser.parse_args()
-    
+
     try:
         # 步骤 1: 提取 FileA 的文本内容
         logging.info("提取 PDF 的文本内容...")
         file_a_text = extract_text_from_pdf(args.source_pdf_path)
-        
+
         # 步骤 2: 分段 FileA 的文本内容
         logging.info("分段 PDF 的文本内容...")
-        file_a_segments = split_text(file_a_text, spilt_max_length=args.spilt_max_length)  # 可根据需要调整 spiltspilt_max_length
-        
+        file_a_segments = split_text(file_a_text,
+                                     spilt_max_length=args.spilt_max_length)  # 可根据需要调整 spiltspilt_max_length
+
         # 步骤 3: 生成 FileA 的嵌入向量，并归一化
         logging.info("生成 PDF 的嵌入向量...")
         file_a_embeddings, embedding_model = generate_embeddings(
             file_a_segments,
             model_name=args.model_name  # 推荐支持多语言的模型
         )
-        
+
         # 步骤 4: 构建 FAISS 内积索引
         logging.info("构建 FAISS 内积索引...")
         faiss_index = build_faiss_index_cosine(file_a_embeddings)
-        
+
         # 可选步骤：保存 FAISS 索引
         # logging.info("保存 FAISS 内积索引...")
         # faiss.write_index(faiss_index, args.faiss_index_path)
-        
+
         # 步骤 5: 读取 FileB 的查询条目
         logging.info("读取 Excel 的查询条目...")
         queries, df_b = read_excel_queries(
             args.query_excel_path,
-            query_sheet_name=args.query_sheet_name,    # 根据实际情况调整工作表名称
-            query_column=args.query_column    # 根据实际情况调整查询列名
+            query_sheet_name=args.query_sheet_name,  # 根据实际情况调整工作表名称
+            query_column=args.query_column  # 根据实际情况调整查询列名
         )
-        
+
         # 步骤 6: 检查相关性并生成输出，包括相关段落和相似度
         logging.info("检查相关性并生成输出...")
         df_output = check_relevance_and_output_cosine(
@@ -268,26 +282,27 @@ def main():
             faiss_index,
             file_a_segments,
             df_b,
-            top_k=args.top_k,         # 检索最相关的 top_k 个段落
-            threshold=args.threshold    # 相似度阈值，可根据实际情况调整
+            top_k=args.top_k,  # 检索最相关的 top_k 个段落
+            threshold=args.threshold  # 相似度阈值，可根据实际情况调整
         )
-        
+
         # 步骤 7: 清洗 DataFrame 中的非法字符
         logging.info("清洗 DataFrame 中的非法字符...")
         columns_to_clean = ['Related_Segments', 'Similarities']
         for col in columns_to_clean:
             df_output[col] = df_output[col].apply(remove_illegal_characters)
-        
+
         # 步骤 8: 将相关段落和相似度转换为结构化的多行字符串
         logging.info("格式化相关段落和相似度以便在 Excel 中显示...")
         # 已在 check_relevance_and_output_cosine 函数中完成格式化
-        
+
         # 步骤 9: 保存结果到新的 Excel 文件
         logging.info(f"保存结果到 {args.output_path}...")
         df_output.to_excel(args.output_path, index=False)
         logging.info("完成！")
     except Exception as e:
         logging.error(f"在执行过程中发生错误: {e}")
+
 
 # 确保在脚本作为主程序运行时执行 main 函数
 if __name__ == "__main__":
