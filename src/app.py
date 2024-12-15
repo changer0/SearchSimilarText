@@ -2,7 +2,7 @@
 
 import os
 import shutil
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, APIRouter
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -41,10 +41,13 @@ app.mount("/downloads", StaticFiles(directory=DOWNLOAD_DIR), name="downloads")
 # 配置静态文件服务，用于提供前端页面
 frontend_dir = os.path.join(os.getcwd(), "frontend")
 logging.info(f"frontend_dir: {frontend_dir}")
-app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+app.mount("/frontend", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+
+# 创建 API 路由器
+api_router = APIRouter(prefix="/api")
 
 
-@app.post("/process/")
+@api_router.post("/process/")
 async def process_files(
         source_pdf: UploadFile = File(..., description="上传的 PDF 文件"),
         query_excel: Optional[UploadFile | str] = File(None, description="上传的 Excel 文件，包含查询条目（可选）"),
@@ -144,3 +147,7 @@ async def process_files(
             logging.info(f"已删除临时目录 {session_dir}")
         except Exception as cleanup_error:
             logging.warning(f"清理临时文件时出错: {cleanup_error}")
+
+
+# 包含 API 路由器 避免冲突！！！
+app.include_router(api_router)

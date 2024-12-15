@@ -6,6 +6,12 @@ BAAI/bge-large-zh-v1.5
 
 BAAI/bge-large-zh-v1.5
 
+## 脚本启动
+
+```agsl
+sh launcher.sh
+```
+
 ## 运行后端服务
 
 ```
@@ -18,27 +24,22 @@ uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 
 http://localhost:8000/docs
 
-目录结构：
+## 前端页面
 
+http://localhost:8000/frontend/index.html
+
+## 问题排查
+报错：
 ```agsl
-├── backend
-│   ├── __pycache__
-│   ├── app.py
-│   ├── downloads
-│   ├── launche.sh
-│   ├── main.py
-│   ├── requirements.txt
-│   ├── scripts
-│   ├── similarity_searcher.py
-│   └── test_search_similar_text.py
-├── backup
-│   ├── FileA.pdf
-│   ├── FileB.xlsx
-│   ├── launche.sh
-│   └── search_similar_text.py
-└── frontend
-    ├── index.html
-    ├── script.js
-    └── sytles.css
-
+/usr/local/bin/python3.10 /Users/lemon/PythonProject/SearchSimilarText/src/main.py 
+INFO:     Will watch for changes in these directories: ['/Users/lemon/PythonProject/SearchSimilarText/src']
+ERROR:    [Errno 48] Address already in use
+```
+查看端口占用情况：
+```agsl
+lsof -i :8000
+```
+杀死对应的进程：
+```agsl
+kill -9 [PID]
 ```
